@@ -2,7 +2,7 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
   "deploy": {
-    "startCommand": "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "python3 -c \"import asyncio\nfrom app.database import engine\nfrom sqlalchemy import text\nasync def main():\n    print('>>> CONNECTING', flush=True)\n    try:\n        async with asyncio.timeout(15):\n            async with engine.connect() as conn:\n                print('>>> CONNECTED', flush=True)\n                r = await conn.execute(text('SELECT 1'))\n                print('>>> QUERY_OK', r.scalar(), flush=True)\n    except Exception as e:\n        print('>>> FAILED:', repr(e), flush=True)\nasyncio.run(main())\nprint('>>> EXITING', flush=True)\nimport time\ntime.sleep(280)\"",
     "healthcheckPath": "/api/v1/health",
     "restartPolicyType": "ON_FAILURE"
   }
