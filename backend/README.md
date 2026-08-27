@@ -27,7 +27,7 @@ uv run alembic revision --autogenerate -m "description"
 uv run alembic upgrade head
 
 # Start Celery worker
-uv run celery -A app.tasks worker -l info
+uv run celery -A app.celery_app.celery_app worker -l info
 ```
 
 ## API endpoints
