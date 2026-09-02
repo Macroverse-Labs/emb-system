@@ -21,7 +21,8 @@ def send_email(to_email: str, subject: str, body: str, html_body: str | None = N
     if html_body:
         message.add_alternative(html_body, subtype="html")
 
-    with SMTP(settings.smtp_host, settings.smtp_port) as server:
+    # Without a timeout a wrong or unreachable host blocks the worker indefinitely.
+    with SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
         if settings.smtp_starttls:
             server.starttls()
         server.login(settings.smtp_username, settings.smtp_password)

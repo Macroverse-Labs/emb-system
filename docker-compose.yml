@@ -55,6 +55,9 @@ services:
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@emb-system.local}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-emb-system}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      GC_SEED_ON_STARTUP: ${GC_SEED_ON_STARTUP:-true}
+      GC_ADMIN_EMAIL: ${GC_ADMIN_EMAIL:-gc@mail.com}
+      GC_ADMIN_PASSWORD: ${GC_ADMIN_PASSWORD:-admin12345}
     ports:
       - "8000:8000"
     command: >

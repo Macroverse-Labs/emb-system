@@ -1,0 +1,125 @@
+/*
+ * Material Design 3 system tokens + base rules for the GC console.
+ *
+ * Ported verbatim from the <helmet><style> block of `GC Console HiFi M3.dc.html`
+ * (values from material-web tokens/versions/v0_192), but scoped to `.gc-root` so
+ * they never leak into the Tailwind theme used by the rest of the app.
+ */
+.gc-root {
+  --md-sys-color-primary: #6750a4;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #eaddff;
+  --md-sys-color-on-primary-container: #21005d;
+  --md-sys-color-secondary: #625b71;
+  --md-sys-color-secondary-container: #e8def8;
+  --md-sys-color-on-secondary-container: #1d192b;
+  --md-sys-color-tertiary: #7d5260;
+  --md-sys-color-tertiary-container: #ffd8e4;
+  --md-sys-color-error: #b3261e;
+  --md-sys-color-error-container: #f9dedc;
+  --md-sys-color-on-error-container: #410e0b;
+  --md-sys-color-surface: #fef7ff;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f7f2fa;
+  --md-sys-color-surface-container: #f3edf7;
+  --md-sys-color-surface-container-high: #ece6f0;
+  --md-sys-color-surface-container-highest: #e6e0e9;
+  --md-sys-color-on-surface: #1d1b20;
+  --md-sys-color-on-surface-variant: #49454f;
+  --md-sys-color-outline: #79747e;
+  --md-sys-color-outline-variant: #cac4d0;
+  --md-sys-color-inverse-surface: #322f35;
+  --md-sys-color-inverse-on-surface: #f5eff7;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-full: 9999px;
+  --md-sys-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-3: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+
+  background: #f3edf7;
+  color: #1d1b20;
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.gc-root a {
+  color: #6750a4;
+  text-decoration: none;
+}
+.gc-root a:hover {
+  color: #4f378b;
+}
+.gc-root button {
+  font-family: inherit;
+}
+.gc-root input,
+.gc-root select,
+.gc-root textarea {
+  font-family: inherit;
+}
+
+.gc-root ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.gc-root ::-webkit-scrollbar-thumb {
+  background: #cac4d0;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.gc-root ::-webkit-scrollbar-thumb:hover {
+  background: #79747e;
+  background-clip: content-box;
+}
+
+.gc-root :focus-visible {
+  outline: 3px solid #6750a4;
+  outline-offset: 2px;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * The design canvas expresses hover with a `style-hover` attribute, which has no
+ * JSX equivalent. It is used in exactly three places; each becomes a class here.
+ */
+.gc-hover-surface:hover {
+  background: #f7f2fa;
+}
+.gc-hover-brighten:hover {
+  filter: brightness(0.97);
+}
+.gc-hover-menu:hover {
+  background: #efe7f3;
+}
+
+/* Material Symbols Outlined ligature icons, as used throughout the sidebar. */
+.gc-root .gc-icon {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}

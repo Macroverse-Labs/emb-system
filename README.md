@@ -28,10 +28,33 @@ A full-stack scaffold with a **Next.js** frontend, **FastAPI** backend, **Postgr
    ```
 
 3. Open the app:
-   - Frontend: http://localhost:3000
+   - Frontend (GC console): http://localhost:3000
    - Backend docs: http://localhost:8000/docs
 
 The backend container automatically runs Alembic migrations on startup.
+
+## GC console
+
+The app's front door is the general contractor access-management console — 30 screens ported from the
+`GC Console HiFi M3` design (Material Design 3), backed by 37 tables and 48 endpoints
+under `/api/v1/gc`.
+
+Open <http://localhost:3000> and sign in as `gc@mail.com` / `admin12345`. The backend container loads the reference dataset on start; to reload
+it by hand:
+
+```bash
+docker compose exec backend python -m app.services.gc.cli --force
+```
+
+Worth trying: the worker register's filter chips and bulk bar, the validation queue
+driven entirely from the keyboard (`j` `k` to move, `a` to approve, `r` to reject),
+`Cmd-K` for the command palette, `g` then `d`/`w`/`v`/`z` to jump between screens,
+click-through on the zone x requirement matrix, drag-to-draw on the zone plan, and the
+reception board behind the dashboard's **Reception board** button. Every change you make
+shows up on the System-change audit screen against your name.
+
+The console keeps working with the API down — it falls back to the design's own dataset
+and says so in the toast bar.
 
 ## Background jobs
 
@@ -56,7 +79,7 @@ uv sync --all-groups
 cp .env.example .env
 # Update DATABASE_URL to point to your local Postgres, or use the Docker services
 uv run alembic upgrade head
-uv run serve
+uv run uvicorn app.main:app --reload
 ```
 
 Run tests:

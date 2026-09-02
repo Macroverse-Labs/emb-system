@@ -27,6 +27,12 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Console identity. `role` is one of the four in gc_role_permissions and decides
+    # both what the sidebar offers and what the API will let this user do.
+    full_name: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="GC user")
+    company_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=now_utc,

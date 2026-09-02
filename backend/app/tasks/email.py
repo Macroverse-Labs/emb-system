@@ -27,5 +27,5 @@ def send_welcome_email(self: Any, to_email: str) -> str:
         )
     except Exception as exc:
         # Retry with exponential backoff.
-        raise self.retry(exc=exc, countdown=2 ** self.request.retries * 60) from exc
+        raise self.retry(exc=exc, countdown=2**self.request.retries * 60) from exc
     return f"Welcome email sent to {to_email}"

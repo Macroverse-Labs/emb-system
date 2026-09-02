@@ -6,11 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.celery_app import celery_app
+from app.config import settings
 from app.database import Base, get_db
 from app.main import app
 
 # Run Celery tasks synchronously during tests (no Redis required).
 celery_app.conf.task_always_eager = True
+
+# Tests must never send real email. A developer .env with placeholder Mailtrap
+# credentials is non-empty, so send_email would try a real SMTP connection and the
+# eager task would block the suite; blanking these takes the "not configured" path.
+settings.smtp_username = ""
+settings.smtp_password = ""
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

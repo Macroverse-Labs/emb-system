@@ -30,6 +30,17 @@ class Settings(BaseSettings):
             return v.replace("postgresql://", "postgresql+asyncpg://", 1)
         return v
 
+    # GC console seed. The dataset loads on startup so a fresh deployment has
+    # something to show; the credentials MUST be overridden for any deployment that
+    # is reachable by anyone else.
+    gc_seed_on_startup: bool = True
+    gc_admin_email: str = "gc@mail.com"
+    gc_admin_password: str = "admin12345"
+
+    # The site's own timezone. Access records are read by people standing at a gate,
+    # so every timestamp the console shows must be in site time, not UTC.
+    site_timezone: str = "Asia/Kuala_Lumpur"
+
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 

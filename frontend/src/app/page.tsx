@@ -1,27 +1,24 @@
-import Link from "next/link";
+import type { Metadata } from "next";
+import GcApp from "@/components/gc/GcApp";
+import type { Screen } from "@/lib/gc/types";
 
-export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 text-center">
-      <h1 className="text-4xl font-bold tracking-tight">emb-system</h1>
-      <p className="max-w-md text-lg text-gray-600">
-        A Next.js + FastAPI scaffold with PostgreSQL, Redis, Celery, JWT auth,
-        and Mailtrap email testing.
-      </p>
-      <div className="flex gap-4">
-        <Link
-          href="/login"
-          className="rounded-md bg-foreground px-5 py-2.5 text-background hover:opacity-90"
-        >
-          Sign in
-        </Link>
-        <Link
-          href="/register"
-          className="rounded-md border px-5 py-2.5 hover:bg-gray-50"
-        >
-          Sign up
-        </Link>
-      </div>
-    </main>
-  );
+export const metadata: Metadata = {
+  title: "GC console — Emerald Builders",
+  description: "Access management for Emerald Bay Block A",
+};
+
+/**
+ * The GC console, and the app's front door.
+ *
+ * One route: the design's whole navigation model is `state.screen`, and the command
+ * palette and `g`-prefixed shortcuts jump between screens without a page transition.
+ * `?s=<screen>` keeps individual screens linkable.
+ */
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ s?: string; project?: string }>;
+}) {
+  const { s, project } = await searchParams;
+  return <GcApp startScreen={s as Screen | undefined} project={project} />;
 }

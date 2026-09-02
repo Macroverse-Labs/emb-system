@@ -8,7 +8,7 @@ celery_app = Celery(
     "emb_system",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["app.tasks.email"],
+    include=["app.tasks.email", "app.tasks.reports", "app.tasks.export"],
 )
 
 celery_app.conf.update(
