@@ -15,6 +15,11 @@ from app.models.gc.admin import (
     ReferenceValue,
     RolePermission,
 )
+from app.models.gc.contractor import (
+    WorkerDraft,
+    WorkerHours,
+    WorkerLeaver,
+)
 from app.models.gc.enforcement import (
     Alert,
     Block,
@@ -87,6 +92,9 @@ __all__ = [
     "VisitorProfile",
     "Worker",
     "WorkerDocument",
+    "WorkerDraft",
+    "WorkerHours",
+    "WorkerLeaver",
     "Zone",
     "ZoneCriterion",
     "ZoneRequirement",

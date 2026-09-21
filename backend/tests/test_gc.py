@@ -6,9 +6,10 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.gc.org import Project
+from app.models.gc.org import ContractorAccount, Project
 from app.models.gc.records import AuditEntry
 from app.models.gc.workforce import DocumentSubmission
+from app.models.user import User
 from app.services.gc.seed import GC_ADMIN_EMAIL, SEED_PASSWORD, seed_gc
 
 ADMIN = GC_ADMIN_EMAIL
@@ -149,3 +150,23 @@ async def test_capability_grid_gates_the_api(
         json={"cells": {"A2 Podium|Hot works": "req"}},
     )
     assert res.status_code == expected, res.text
+
+
+async def test_issued_contractor_login_can_sign_in(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """An active TC account is only a login if a user with that email can authenticate."""
+    account = (
+        (
+            await db_session.execute(
+                select(ContractorAccount).where(ContractorAccount.status == "Active")
+            )
+        )
+        .scalars()
+        .first()
+    )
+    assert account is not None and account.user_id is not None
+    user = await db_session.get(User, account.user_id)
+    assert user is not None and user.email == account.email
+    assert user.role == "Trade contractor" and user.company_id == account.company_id
+    await _token(client, account.email)

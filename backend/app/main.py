@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import AsyncSessionLocal, engine
-from app.routers import auth_router, gc_router, health_router
+from app.routers import auth_router, gc_router, health_router, tc_router
 from app.services.gc.seed import seed_gc
 
 logger = logging.getLogger(__name__)
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(gc_router, prefix="/api/v1")
+    app.include_router(tc_router, prefix="/api/v1")
 
     return app
 

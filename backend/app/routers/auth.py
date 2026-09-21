@@ -54,6 +54,13 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)) -> Token
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # A suspended contractor login (or an invitation nobody has accepted) must not get
+    # a token at all — every other endpoint already refuses an inactive user.
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is suspended",
+        )
     access_token = create_access_token(data={"sub": user.id})
     return Token(access_token=access_token)
 

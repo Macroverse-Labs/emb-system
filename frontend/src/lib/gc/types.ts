@@ -133,8 +133,8 @@ export type DeviceRow = [
  */
 
 
-/** name, trade, on register, on site, kind, contact, insurance expiry, flag */
-export type CompanyRow = [string, string, number, number, string, string, string, string];
+/** name, trade, on register, on site, kind, contact, insurance expiry, flag, id */
+export type CompanyRow = [string, string, number, number, string, string, string, string, string?];
 
 /** id, when, where, by, capacity, booked, state */
 export type SessionRow = [string, string, string, string, number, number, string];
@@ -180,8 +180,8 @@ export type AuditRow = [string, string, string, string, string, string, string];
 /** name, role, company, last seen, rights scope */
 export type UserRow = [string, Role, string, string, string];
 
-/** company, contact, email, status, last seen, user count */
-export type TcAccountRow = [string, string, string, string, string, number];
+/** company, contact, email, status, last seen, user count, id */
+export type TcAccountRow = [string, string, string, string, string, number, string?];
 
 /** list name, comma-joined values, count */
 export type RefDataRow = [string, string, number];

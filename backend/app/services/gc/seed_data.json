@@ -1348,7 +1348,12 @@
     "Issue TC logins",
     "Run reports",
     "Roll call",
-    "Change system settings"
+    "Change system settings",
+    "Add workers",
+    "Upload documents",
+    "Book inductions",
+    "Request visits",
+    "Mark leavers"
   ],
   "roles": [
     "GC administrator",

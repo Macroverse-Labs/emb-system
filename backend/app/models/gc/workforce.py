@@ -31,6 +31,9 @@ class Worker(Base, PkMixin, ProjectScopedMixin, TimestampMixin):
     on_site: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_event: Mapped[str] = mapped_column(String(32), nullable=False, default="—")
     nationality: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    # The TC console's "Inactive workers" 31-day clock reads these two.
+    last_seen_on: Mapped[str] = mapped_column(String(32), nullable=False, default="—")
+    inactivity_warnings: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     date_of_birth: Mapped[str] = mapped_column(String(32), nullable=False, default="—")
     sex: Mapped[str] = mapped_column(String(16), nullable=False, default="—")
@@ -100,6 +103,8 @@ class DocumentSubmission(Base, PkMixin, ProjectScopedMixin, TimestampMixin):
     expiry: Mapped[str] = mapped_column(String(32), nullable=False, default="—")
     issuer: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     submitted: Mapped[str] = mapped_column(String(32), nullable=False, default="—")
+    # Where the TC's uploaded scan landed under `settings.upload_dir`.
+    file_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     decision: Mapped[str | None] = mapped_column(String(16), index=True, nullable=True)
     decision_reason: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     decided_by: Mapped[str] = mapped_column(String(120), nullable=False, default="")
