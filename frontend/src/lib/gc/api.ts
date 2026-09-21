@@ -77,6 +77,12 @@ export const gcApi = {
     mutate(`/gc/admin/notifications`, { cells }, "PUT"),
   saveVisitorPolicy: (toggles: Record<string, boolean>, limits: Record<string, string>) =>
     mutate(`/gc/visitors/policy`, { toggles, limits }, "PUT"),
+  issueContractorLogin: (body: { company_id: string; contact_name: string; email: string }) =>
+    mutate(`/gc/admin/contractors`, body),
+  suspendContractor: (id: string) => mutate(`/gc/admin/contractors/${id}/suspend`),
+  unlockContractor: (id: string) => mutate(`/gc/admin/contractors/${id}/unlock`),
+  resendContractor: (id: string) => mutate(`/gc/admin/contractors/${id}/resend`),
+  reinstateContractor: (id: string) => mutate(`/gc/admin/contractors/${id}/reinstate`),
 };
 
 export type ScreenName = Screen;

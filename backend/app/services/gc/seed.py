@@ -35,6 +35,7 @@ from app.models.gc.admin import (
     ReferenceValue,
     RolePermission,
 )
+from app.models.gc.contractor import WorkerHours, WorkerLeaver
 from app.models.gc.enforcement import (
     Alert,
     Block,
@@ -98,10 +99,113 @@ def _parse_last_seen(label: str) -> datetime | None:
 # them — the defaults are fine on a laptop and nowhere else.
 SEED_PASSWORD = settings.gc_admin_password
 GC_ADMIN_EMAIL = settings.gc_admin_email
+TC_ADMIN_EMAIL = settings.tc_admin_email
+
+# The TC console's demo login belongs to the company the canvas itself is drawn for —
+# `TC Console HiFi M3.dc.html` puts "Sinar Electrical" in its sidebar header.
+TC_ADMIN_COMPANY = "Sinar Electrical"
 
 # The design's data describes Emerald Bay Block A. The other two projects in the
 # switcher exist so the switcher works; they start empty.
 PRIMARY_PROJECT = "EMB1A"
+
+# Everything a trade contractor may do — the whole of the TC console and nothing else.
+TC_CAPABILITIES = frozenset(
+    {
+        "Add workers",
+        "Upload documents",
+        "Book inductions",
+        "Request visits",
+        "Mark leavers",
+        "Run reports",
+    }
+)
+
+# The TC console's Hours & days, Inactive workers and Leavers screens (design arrays
+# HR, IA and LV). Not in `seed_data.json` because the TC console has no frontend
+# fixtures yet; move them there when it does.
+TC_HOURS: list[tuple[str, int, str, str, bool, str]] = [
+    ("Ravi Kumaran", 97, "58 / 60", "Day 11 of 12", True, "WARNED"),
+    ("Krishna Bahadur", 90, "54 / 60", "Day 12 of 12", True, "WARNED"),
+    ("Nabin Thapa", 100, "61 / 60", "Day 6 of 12", True, "WARNED"),
+    ("Deepak Rai", 73, "44 / 60", "Day 5 of 12", False, "—"),
+    ("Rahmat Santoso", 63, "38 / 60", "Day 3 of 12", False, "—"),
+    ("Ahmad Zulkifli", 52, "31 / 60", "Day 2 of 12", False, "—"),
+    ("Rajesh Naidu", 78, "47 / 60", "Day 8 of 12", False, "—"),
+]
+
+TC_INACTIVE: list[tuple[str, str, int]] = [
+    ("Sunil Gurung", "26 Jul", 1),
+    ("Hafiz Rahman", "27 Jul", 1),
+    ("Rahmat Santoso", "28 Jul", 1),
+    ("Md Shahin Alam", "01 Aug", 0),
+    ("Arun Selvam", "03 Aug", 0),
+    ("Bilal Ahmed", "20 Jul", 2),
+    ("Lokesh Pillai", "18 Jul", 2),
+]
+
+TC_LEAVERS: list[tuple[str, str, str, str, str, str, int, str]] = [
+    (
+        "Arun Selvam",
+        "26 Aug",
+        "Contract ended",
+        "Returned",
+        "412 h",
+        "Access ends 23:59",
+        1,
+        "Labourer · EMB1A · 9 months",
+    ),
+    (
+        "Sunil Gurung",
+        "27 Aug",
+        "Resigned",
+        "Not returned",
+        "388 h",
+        "Card not returned",
+        2,
+        "Labourer · EMB1A · 14 months",
+    ),
+    (
+        "Nabin Thapa",
+        "31 Aug",
+        "Transferred to Contractor D",
+        "Kept — transfer",
+        "1,204 h",
+        "Awaiting D's request",
+        0,
+        "Pipefitter · EMB1A · 2 years",
+    ),
+    (
+        "Bilal Ahmed",
+        "22 Aug",
+        "Dismissed — warning 3",
+        "Returned",
+        "96 h",
+        "Access removed",
+        0,
+        "Scaffolder · EMB1A · 4 months",
+    ),
+    (
+        "Md Shahin Alam",
+        "15 Aug",
+        "Contract ended",
+        "Returned",
+        "2,088 h",
+        "Completed",
+        0,
+        "Labourer · EMB1A · 3 years",
+    ),
+    (
+        "Hafiz Rahman",
+        "09 Aug",
+        "Resigned",
+        "Returned",
+        "744 h",
+        "Completed",
+        0,
+        "Scaffolder · EMB1A · 1 year",
+    ),
+]
 
 
 def _load() -> dict[str, Any]:
@@ -217,7 +321,7 @@ def _default_permission(capability: str, role: str) -> bool:
         )
     if role == "Security":
         return capability in ("Roll call", "Record violations")
-    return capability == "Run reports"
+    return capability in TC_CAPABILITIES
 
 
 def _default_channel(event: str, channel: str) -> bool:
@@ -238,31 +342,87 @@ async def _upsert_user(
     role: str,
     company_id: str | None,
     last_seen_at: datetime | None,
-) -> None:
+) -> User:
     """Create the console user, or give an existing account its console identity.
 
     Skipping an account that already exists would leave it with the column defaults —
     no name and the lowest role — which is how a seeded administrator quietly loses
-    their rights.
+    their rights. Returns the row, flushed, so a caller can hold its id.
     """
     user = await db.scalar(select(User).where(User.email == email))
     if user is None:
-        db.add(
-            User(
-                email=email,
-                hashed_password=hashed,
-                full_name=full_name,
-                role=role,
-                company_id=company_id,
-                last_seen_at=last_seen_at,
-            )
+        user = User(
+            email=email,
+            hashed_password=hashed,
+            full_name=full_name,
+            role=role,
+            company_id=company_id,
+            last_seen_at=last_seen_at,
         )
-        return
+        db.add(user)
+        await db.flush()
+        return user
     user.full_name = full_name
     user.role = role
     user.company_id = company_id
     if last_seen_at is not None:
         user.last_seen_at = last_seen_at
+    return user
+
+
+async def _top_up_permissions(db: AsyncSession) -> int:
+    """Insert rights-grid rows for capabilities the database has never seen.
+
+    The grid is seeded once and thereafter owned by the Users & rights screen, so the
+    full seed refuses to run on a populated database. That means a release which adds
+    a capability — as the TC console did — would otherwise leave every role missing it,
+    and `require()` denies a capability with no row. A trade contractor would sign in
+    to a console that refuses every action, with nothing in the UI saying why.
+
+    So top up the missing pairs only: existing rows keep whatever the GC set them to.
+    """
+    d = _load()
+    present = {
+        (row.role, row.capability)
+        for row in (await db.execute(select(RolePermission))).scalars().all()
+    }
+    added = 0
+    for role in d["roles"]:
+        for capability in d["capabilities"]:
+            if (role, capability) in present:
+                continue
+            db.add(
+                RolePermission(
+                    role=role, capability=capability, allowed=_default_permission(capability, role)
+                )
+            )
+            added += 1
+    return added
+
+
+async def _ensure_tc_demo_login(db: AsyncSession) -> bool:
+    """Make sure the /tc demo account exists on an already-seeded database.
+
+    Same reasoning as `_top_up_permissions`: the full seed will not re-run once data
+    is present, so a database seeded before the TC console existed would have no
+    contractor to sign in as and `/tc` would be unreachable on it.
+    """
+    company = await db.scalar(select(Company).where(Company.name == TC_ADMIN_COMPANY))
+    if company is None:
+        return False
+    existing = await db.scalar(select(User).where(User.email == TC_ADMIN_EMAIL))
+    if existing is not None:
+        return False
+    await _upsert_user(
+        db,
+        email=TC_ADMIN_EMAIL,
+        hashed=get_password_hash(SEED_PASSWORD),
+        full_name="R. Idris",
+        role="Trade contractor",
+        company_id=company.id,
+        last_seen_at=None,
+    )
+    return True
 
 
 async def seed_gc(db: AsyncSession, *, force: bool = False) -> bool:
@@ -274,6 +434,13 @@ async def seed_gc(db: AsyncSession, *, force: bool = False) -> bool:
     """
     existing = await db.scalar(select(func.count()).select_from(Project))
     if existing and not force:
+        # Already seeded, so leave the data alone — but a release that adds a
+        # capability or a console still has to reach an existing database, or the
+        # roles it belongs to can never use it. See the two helpers above.
+        topped_up = await _top_up_permissions(db)
+        added_tc = await _ensure_tc_demo_login(db)
+        if topped_up or added_tc:
+            await db.commit()
         return False
     if existing:
         # Ordered children-first; gc_projects cascades to the project-scoped tables,
@@ -312,18 +479,19 @@ async def seed_gc(db: AsyncSession, *, force: bool = False) -> bool:
         companies[name] = c
     await db.flush()
 
+    tc_accounts: list[ContractorAccount] = []
     for co, who, email, status, seen, users in d["tcAccounts"]:
-        db.add(
-            ContractorAccount(
-                project_id=pid,
-                company_id=companies[co].id,
-                contact_name=who,
-                email=email,
-                status=status,
-                last_seen=seen,
-                user_count=users,
-            )
+        account = ContractorAccount(
+            project_id=pid,
+            company_id=companies[co].id,
+            contact_name=who,
+            email=email,
+            status=status,
+            last_seen=seen,
+            user_count=users,
         )
+        db.add(account)
+        tc_accounts.append(account)
 
     # ---- workers ----------------------------------------------------------------
     # The design loads a 20-row sample of the register, but its validation queue
@@ -380,6 +548,45 @@ async def seed_gc(db: AsyncSession, *, force: bool = False) -> bool:
         for tr in _training_for(i):
             db.add(TrainingRecord(project_id=pid, worker=w, **tr))
     await db.flush()
+
+    # ---- TC console: hours, inactivity, leavers ---------------------------------
+    # The design names workers of one contractor; the seeded register spreads those
+    # same names across several, which is better — it gives the TC screens data under
+    # more than one tenant. A name with no register row is skipped.
+    for name, pct, hours_label, days_label, warned, flag in TC_HOURS:
+        if name in workers:
+            db.add(
+                WorkerHours(
+                    project_id=pid,
+                    worker_id=workers[name].id,
+                    pct=pct,
+                    hours_label=hours_label,
+                    days_label=days_label,
+                    warned=warned,
+                    flag=flag,
+                )
+            )
+
+    for name, last_seen_on, warnings in TC_INACTIVE:
+        if name in workers:
+            workers[name].last_seen_on = last_seen_on
+            workers[name].inactivity_warnings = warnings
+
+    for name, last_day, reason, card, hours_label, status_label, level, meta in TC_LEAVERS:
+        if name in workers:
+            db.add(
+                WorkerLeaver(
+                    project_id=pid,
+                    worker_id=workers[name].id,
+                    last_day=last_day,
+                    reason=reason,
+                    card_returned=card,
+                    hours_label=hours_label,
+                    status_label=status_label,
+                    level=level,
+                    meta=meta,
+                )
+            )
 
     # ---- validation queue -------------------------------------------------------
     for sub in d["submissions"]:
@@ -927,18 +1134,42 @@ async def seed_gc(db: AsyncSession, *, force: bool = False) -> bool:
 
     # ---- console users ----------------------------------------------------------
     hashed = get_password_hash(SEED_PASSWORD)
+
+    # An issued TC login is only a login if a real user sits behind it, signing in
+    # with the address the account was issued to. Locked/invited/suspended accounts
+    # deliberately get none, which is what those statuses mean.
+    tc_email_by_company: dict[str, str] = {}
+    for account in tc_accounts:
+        if account.status != "Active":
+            continue
+        contact = await _upsert_user(
+            db,
+            email=account.email,
+            hashed=hashed,
+            full_name=account.contact_name,
+            role="Trade contractor",
+            company_id=account.company_id,
+            last_seen_at=_parse_last_seen(account.last_seen),
+        )
+        account.user_id = contact.id
+        tc_email_by_company[account.company_id] = account.email
+
     for name, role, co, seen, _scope in d["users"]:
         last_seen = _parse_last_seen(seen)
-        handle = name.lower().replace(" ", "").replace(".", "")
-        domain = "emeraldbuilders.com" if co == "Emerald Builders" else "contractor.example"
-        email = f"{handle}@{domain}"
+        company_id = companies[co].id if co in companies else None
+        # A contractor's console row IS their issued login, not a second account.
+        email = tc_email_by_company.get(company_id or "") if role == "Trade contractor" else None
+        if email is None:
+            handle = name.lower().replace(" ", "").replace(".", "")
+            domain = "emeraldbuilders.com" if co == "Emerald Builders" else "contractor.example"
+            email = f"{handle}@{domain}"
         await _upsert_user(
             db,
             email=email,
             hashed=hashed,
             full_name=name,
             role=role,
-            company_id=companies[co].id if co in companies else None,
+            company_id=company_id,
             last_seen_at=last_seen,
         )
     # The account the console signs in as.
@@ -949,6 +1180,16 @@ async def seed_gc(db: AsyncSession, *, force: bool = False) -> bool:
         full_name="A. Whitmore",
         role="GC administrator",
         company_id=companies["Emerald Builders"].id,
+        last_seen_at=None,
+    )
+    # Its counterpart for /tc, so the TC console has a door of its own to knock on.
+    await _upsert_user(
+        db,
+        email=TC_ADMIN_EMAIL,
+        hashed=hashed,
+        full_name="R. Idris",
+        role="Trade contractor",
+        company_id=companies[TC_ADMIN_COMPANY].id,
         last_seen_at=None,
     )
 

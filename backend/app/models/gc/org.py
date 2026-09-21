@@ -53,6 +53,11 @@ class ContractorAccount(Base, PkMixin, ProjectScopedMixin, TimestampMixin):
     )
     contact_name: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
+    # The sign-in behind the issued login. Null until the contact accepts (or if the
+    # user is later deleted), which is exactly the "Invited — not yet accepted" state.
+    user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True
+    )
     status: Mapped[str] = mapped_column(String(64), nullable=False, default="Active")
     last_seen: Mapped[str] = mapped_column(String(32), nullable=False, default="—")
     user_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

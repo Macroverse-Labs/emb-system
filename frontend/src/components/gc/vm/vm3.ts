@@ -381,45 +381,64 @@ export function vm3(ctx: GcCtx) {
     usInvite: () => toast("Invitation sent — the account is inert until they set a password"),
 
     /* ---- contractor accounts ---- */
-    tcRows: TCACC.map((t) => ({
-      co: t[0],
-      who: t[1],
-      email: t[2],
-      st: t[3],
-      seen: t[4],
-      users: String(t[5]),
-      c:
-        t[3].indexOf("Active") === 0
-          ? "#146C2E"
-          : t[3].indexOf("Locked") === 0
-            ? "#B3261E"
-            : t[3].indexOf("Invited") === 0
-              ? "#7A5900"
-              : "#79747E",
-      act:
+    tcRows: TCACC.map((t) => {
+      // The button a row offers, what it does, and the sentence to show if the
+      // console is running on fixtures — all decided by the account's standing.
+      const id = t[6] ?? "";
+      const one =
         t[3].indexOf("Locked") === 0
-          ? "Unlock"
+          ? { act: "Unlock", said: "unlocked, password reset sent", call: () => gcApi.unlockContractor(id) }
           : t[3].indexOf("Invited") === 0
-            ? "Resend"
+            ? { act: "Resend", said: "invitation re-sent", call: () => gcApi.resendContractor(id) }
             : t[3].indexOf("Suspended") === 0
-              ? "Reinstate"
-              : "Suspend",
-      doAct: (e: React.MouseEvent) => {
-        e.stopPropagation();
-        toast(
-          t[0] +
-            " — account " +
-            (t[3].indexOf("Locked") === 0
-              ? "unlocked, password reset sent"
+              ? { act: "Reinstate", said: "reinstated", call: () => gcApi.reinstateContractor(id) }
+              : {
+                  act: "Suspend",
+                  said: "suspended — its workers stay on the register",
+                  call: () => gcApi.suspendContractor(id),
+                };
+      return {
+        co: t[0],
+        who: t[1],
+        email: t[2],
+        st: t[3],
+        seen: t[4],
+        users: String(t[5]),
+        c:
+          t[3].indexOf("Active") === 0
+            ? "#146C2E"
+            : t[3].indexOf("Locked") === 0
+              ? "#B3261E"
               : t[3].indexOf("Invited") === 0
-                ? "invitation re-sent"
-                : t[3].indexOf("Suspended") === 0
-                  ? "reinstated"
-                  : "suspended — its workers stay on the register"),
-        );
-      },
-    })),
-    tcNew: () => toast("Login issued — the contractor can add workers but cannot validate them"),
+                ? "#7A5900"
+                : "#79747E",
+        act: one.act,
+        doAct: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          actions.run(one.call, t[0] + " — account " + one.said);
+        },
+      };
+    }),
+    // ponytail: three prompts; the console has no wired-up form idiom to reuse — the
+    // one modal in the port never reads its own inputs. Swap for a real form if it grows.
+    tcNew: () => {
+      const name = window.prompt("Company, exactly as the register spells it")?.trim();
+      if (!name) return;
+      const company = ctx.data.companies.find((c) => c[0].toLowerCase() === name.toLowerCase());
+      if (!company) {
+        toast("No company called " + name + " on this project");
+        return;
+      }
+      const who = window.prompt("Account holder")?.trim();
+      if (!who) return;
+      const email = window.prompt("Email — this is what they sign in with")?.trim();
+      if (!email) return;
+      actions.run(
+        () =>
+          gcApi.issueContractorLogin({ company_id: company[8] ?? "", contact_name: who, email }),
+        "Login issued — the contractor can add workers but cannot validate them",
+      );
+    },
 
     /* ---- reference data ---- */
     rdRows: REFDATA.map((r) => ({

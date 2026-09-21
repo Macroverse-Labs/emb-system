@@ -36,10 +36,16 @@ class Settings(BaseSettings):
     gc_seed_on_startup: bool = True
     gc_admin_email: str = "gc@mail.com"
     gc_admin_password: str = "admin12345"
+    # The matching demo login for the TC console at /tc. It is a trade contractor
+    # account, so it sees only its own company's workers — the whole point of /tc.
+    tc_admin_email: str = "tc@mail.com"
 
     # The site's own timezone. Access records are read by people standing at a gate,
     # so every timestamp the console shows must be in site time, not UTC.
     site_timezone: str = "Asia/Kuala_Lumpur"
+
+    # Where a trade contractor's uploaded documents are written.
+    upload_dir: str = "uploads"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"

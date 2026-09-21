@@ -31,6 +31,7 @@ from app.services.gc.audit import record_audit
 router = APIRouter(prefix="/gc/admin", tags=["gc"])
 
 ADMIN_ROLE = "GC administrator"
+TC_ROLE = "Trade contractor"
 SETTINGS_CAP = "Change system settings"
 
 
@@ -103,6 +104,41 @@ async def _company_name(db: AsyncSession, account: ContractorAccount) -> str:
     return company.name if company else ""
 
 
+def _temp_password() -> str:
+    """Mint the temporary password a contractor contact signs in with."""
+    # ponytail: temp password in the response; swap for a signed one-time activation link when this leaves POC
+    return secrets.token_urlsafe(12)
+
+
+async def _reset_login(db: AsyncSession, account: ContractorAccount) -> str:
+    """Give the account a sign-in with a fresh temporary password, creating it if needed.
+
+    Returns the plaintext password so the caller can read it out to the contractor —
+    it is never written to the audit trail, only hashed onto the user.
+    """
+    password = _temp_password()
+    login = await db.get(User, account.user_id) if account.user_id else None
+    if login is None:
+        login = (
+            await db.execute(select(User).where(User.email == account.email))
+        ).scalar_one_or_none()
+    if login is None:
+        login = User(
+            email=account.email,
+            full_name=account.contact_name,
+            role=TC_ROLE,
+            company_id=account.company_id,
+            hashed_password=get_password_hash(password),
+        )
+        db.add(login)
+        await db.flush()
+    else:
+        login.hashed_password = get_password_hash(password)
+    login.is_active = True
+    account.user_id = login.id
+    return password
+
+
 async def _act(
     db: AsyncSession,
     *,
@@ -111,10 +147,15 @@ async def _act(
     account: ContractorAccount,
     blocked_prefix: str,
     new_status: str,
+    active: bool,
     action: str,
     outcome: str,
 ) -> ActionResult:
-    """Move a contractor login to a new status, refusing a no-op, and audit it."""
+    """Move a contractor login to a new status, refusing a no-op, and audit it.
+
+    `active` is the state the sign-in behind the account moves to, so a suspended
+    account genuinely cannot sign in rather than only looking suspended.
+    """
     if account.status.startswith(blocked_prefix):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=f"Already {account.status}"
@@ -122,6 +163,9 @@ async def _act(
     company_name = await _company_name(db, account)
     before = account.status
     account.status = new_status
+    login = await db.get(User, account.user_id) if account.user_id else None
+    if login is not None:
+        login.is_active = active
     await record_audit(
         db,
         project_id=project.id,
@@ -230,16 +274,24 @@ async def issue_contractor_login(
     ).scalar_one_or_none()
     if company is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
-
-    db.add(
-        ContractorAccount(
-            project_id=project.id,
-            company_id=company.id,
-            contact_name=payload.contact_name,
-            email=payload.email,
-            status="Invited — not yet accepted",
+    existing = (
+        await db.execute(select(User).where(User.email == payload.email))
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{payload.email} already has an account",
         )
+
+    account = ContractorAccount(
+        project_id=project.id,
+        company_id=company.id,
+        contact_name=payload.contact_name,
+        email=payload.email,
+        status="Invited — not yet accepted",
     )
+    db.add(account)
+    password = await _reset_login(db, account)
     await record_audit(
         db,
         project_id=project.id,
@@ -250,7 +302,10 @@ async def issue_contractor_login(
     )
     await db.commit()
     return ActionResult(
-        message="Login issued — the contractor can add workers but cannot validate them"
+        message=(
+            f"Login issued — temporary password {password} · read it to them now, "
+            "the contractor can add workers but cannot validate them"
+        )
     )
 
 
@@ -270,6 +325,7 @@ async def suspend_contractor(
         account=account,
         blocked_prefix="Suspended",
         new_status="Suspended",
+        active=False,
         action="Contractor login suspended",
         outcome="suspended — its workers stay on the register",
     )
@@ -295,6 +351,7 @@ async def unlock_contractor(
         account=account,
         blocked_prefix="Active",
         new_status="Active",
+        active=True,
         action="Contractor login unlocked",
         outcome="unlocked, password reset sent",
     )
@@ -314,6 +371,7 @@ async def resend_contractor_invitation(
             status_code=status.HTTP_409_CONFLICT, detail=f"Already accepted — {account.status}"
         )
     company_name = await _company_name(db, account)
+    password = await _reset_login(db, account)
     await record_audit(
         db,
         project_id=project.id,
@@ -324,7 +382,12 @@ async def resend_contractor_invitation(
         after=account.status,
     )
     await db.commit()
-    return ActionResult(message=f"{company_name} — account invitation re-sent")
+    return ActionResult(
+        message=(
+            f"{company_name} — account invitation re-sent, "
+            f"temporary password {password} · the previous one no longer works"
+        )
+    )
 
 
 @router.post("/contractors/{account_id}/reinstate", response_model=ActionResult)
@@ -347,6 +410,7 @@ async def reinstate_contractor(
         account=account,
         blocked_prefix="Active",
         new_status="Active",
+        active=True,
         action="Contractor login reinstated",
         outcome="reinstated",
     )

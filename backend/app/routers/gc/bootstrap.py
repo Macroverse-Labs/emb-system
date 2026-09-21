@@ -145,6 +145,7 @@ async def bootstrap(
                 c.contact,
                 c.insurance_expiry,
                 c.flag,
+                c.id,
             ]
             for c in companies
         ],
@@ -274,6 +275,7 @@ async def bootstrap(
                 a.status,
                 a.last_seen,
                 a.user_count,
+                a.id,
             ]
             for a in await _all(db, ContractorAccount, pid)
         ],

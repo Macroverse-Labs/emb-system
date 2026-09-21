@@ -278,7 +278,7 @@ export const USERS: UserRow[] = [
   ['K. Sivanesan','Trade contractor','Pantas Steelworks','Today 08:22','own']
 ];
 
-export const CAPS: string[] = ['Validate documents','Create zones','Change access rules','Block & reinstate','Record violations','Grant visitor passes','Issue TC logins','Run reports','Roll call','Change system settings'];
+export const CAPS: string[] = ['Validate documents','Create zones','Change access rules','Block & reinstate','Record violations','Grant visitor passes','Issue TC logins','Run reports','Roll call','Change system settings','Add workers','Upload documents','Book inductions','Request visits','Mark leavers'];
 
 export const ROLES: Role[] = ['GC administrator','GC user','Security','Trade contractor'];
 
